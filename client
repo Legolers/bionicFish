@@ -1,0 +1,57 @@
+#include <WiFi.h>
+
+const char* ssid = "your_ssid";    
+const char* password = "your_pssw";  
+const char* serverIP = "IP_ESP32";  // Βάλε την IP του ESP32 Server
+const int serverPort = 80;
+
+WiFiClient client;
+
+void setup() {
+    Serial.begin(115200);
+    
+    WiFi.begin(ssid, password);
+    Serial.print("Connecting to WiFi...");
+
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+
+    Serial.println("\nConnected to WiFi");
+    Serial.println("Enter an angle (0-180) and press Enter: ");
+}
+
+void loop() {
+    if (Serial.available() > 0) {  // ✅ Διαβάζουμε μόνο αν υπάρχει έγκυρη είσοδος
+        String input = Serial.readStringUntil('\n');  // Διαβάζει τη γραμμή ως string
+        input.trim();  // ✅ Αφαιρεί κενά και χαρακτήρες νέας γραμμής
+
+        if (input.length() > 0) {  // ✅ Αν το string δεν είναι κενό
+            int angle = input.toInt();  // Μετατροπή σε αριθμό
+
+            if (angle >= 0 && angle <= 180) {  // ✅ Έλεγχος ότι είναι έγκυρη γωνία
+                Serial.print("Sending angle: ");
+                Serial.println(angle);
+
+                if (client.connect(serverIP, serverPort)) {
+                    client.println(angle);
+                    Serial.println("Angle sent!");
+
+                    while (client.available()) {
+                        String response = client.readStringUntil('\n');
+                        Serial.println("Server Response: " + response);
+                    }
+
+                    client.stop();
+                } else {
+                    Serial.println("Connection Failed");
+                }
+            } else {
+                Serial.println("Invalid angle! Enter a value between 0-180.");
+            }
+        }
+    }
+
+    delay(200);
+}
