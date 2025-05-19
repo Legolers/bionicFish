@@ -1,0 +1,64 @@
+#include <WiFi.h>
+#include <ESP32Servo.h>  // Χρήση της σωστής βιβλιοθήκης για ESP32
+
+const char* ssid = "To_Diko_Sou_WiFi";  
+const char* password = "To_Diko_Sou_Kodiko";  
+
+WiFiServer server(80);
+
+Servo myServo;
+int servoPin = 5;
+bool servoMoved = false;  // ✅ Μεταβλητή που δείχνει αν ο Servo έχει λάβει εντολή
+
+void setup() {
+    Serial.begin(115200);
+    
+    WiFi.begin(ssid, password);
+    Serial.print("Connecting to WiFi...");
+
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+
+    Serial.println("\nConnected to WiFi");
+    Serial.print("Server IP: ");
+    Serial.println(WiFi.localIP());
+
+    server.begin();
+    Serial.println("Server started...");
+
+    myServo.attach(servoPin, 500, 2400);  // ✅ Ορίζουμε τη σωστή PWM συχνότητα
+}
+
+void loop() {
+    WiFiClient client = server.available();
+
+    if (client) {
+        Serial.println("Client Connected");
+
+        while (client.connected()) {
+            if (client.available()) {
+                String request = client.readStringUntil('\r');  
+                Serial.println("Received: " + request);
+                client.flush();
+
+                int angle = request.toInt();
+                if (angle >= 0 && angle <= 180) {
+                    myServo.write(angle);  // ✅ Κίνηση Servo στη γωνία
+                    servoMoved = true;  // ✅ Ο Servo έχει μετακινηθεί τουλάχιστον μία φορά
+                    Serial.print("Moving Servo to: ");
+                    Serial.println(angle);
+                    client.println("OK");
+                } else {
+                    Serial.println("Invalid Angle");
+                    client.println("ERROR");
+                }
+            }
+        }
+
+        client.stop();
+        Serial.println("Client Disconnected");
+    }
+}
+
